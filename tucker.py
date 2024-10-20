@@ -39,13 +39,6 @@ K = 1
 
 logger = setup_logger(f'./tucker-log/top{K}-training.log')
 
-# log csv file manually
-with open(f"./tucker-log/manual-train-log-top{K}.csv", "w") as f:
-    f.write('init,n_iter,n_components,user_factors,item_factors,time_factors,map_score,recall_score,test_data_map_score,test_data_recall_score,time\n')
-with open(f"./tucker-log/manual-top{K}-recommendation-test.csv", "w") as f:
-    f.write('user_id,init,n_iter,n_components,item_1')
-    # f.write('user_id,init,n_iter,n_components,item_1,item_2,item_3,item_4,item_5')
-
 # Set the TensorLy backend to NumPy for better performance
 tl.set_backend('numpy')
 np.random.seed(RANDOM_STATE)
@@ -159,24 +152,9 @@ for init_kernel in INIT_KERNEL:
                 scores = np.einsum('i,j,k,ijk->j', user_vector, np.ones(item_factors.shape[1]), time_vector, core)
                 top_k_items = np.argsort(scores)[::-1][:k]
                 return [le_item.inverse_transform([item])[0] for item in top_k_items]
+            
+            logger.info(f"Getting top-k recommendations from test data to start evaluation")
 
-            def get_recommendations(user_id, k:int=5):
-                recommendations = get_top_k_recommendations(user_id, k=k)
-                test_df_recommendation['user_id'].append(user_id)
-                test_df_recommendation['init'].append(init_kernel)
-                test_df_recommendation['n_iter'].append(n_iter)
-                test_df_recommendation['n_components'].append(f'(33, {n_components}, 408)')
-
-                with open(f"./tucker-log/manual-top{K}-recommendation-test.csv", 'a') as f: # log in csv file manually
-                    f.write(f'\n{user_id},{init_kernel},{n_iter},"(33, {n_components}, 408)",') 
-                    for i, item in enumerate(recommendations, 1):
-                        test_df_recommendation[f'item_{i}'].append(item)
-                        f.write(f'{item},')
-
-            logger.info(f"Getting top-{K} recommendations for test data")
-            for user_id in test_df['user'].unique():
-                get_recommendations(user_id, k=K)
-                
             map_score = calculate_map(train_df, k=K)
             recall_score = calculate_recall(train_df, k=K)
 
@@ -195,10 +173,6 @@ for init_kernel in INIT_KERNEL:
             score_log['test_data_map_score'].append(test_data_map_score)
             score_log['test_data_recall_score'].append(test_data_recall_score)
             score_log['time'].append(round(stop-start, 2))
-
-            # log manually
-            with open(f"./tucker-log/manual-train-log-top{K}.csv", 'a') as f:
-                f.write(f'{init_kernel},{n_iter},"(33, {n_components}, 408)","{user_factors.shape}","{item_factors.shape}","{time_factors.shape}",{map_score},{recall_score},{test_data_map_score},{test_data_recall_score},{round(stop-start, 2)}\n')
 
 score_log_df = pd.DataFrame(score_log)
 score_log_df.to_csv(f'./tucker-log/train-log-top{K}.csv', index=False)
