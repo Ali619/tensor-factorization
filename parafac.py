@@ -180,7 +180,6 @@ def get_classification_report(test_df:pd.DataFrame, k:int=5):
     report = classification_report(y_true, recommendations, labels=[0, 1])
     return report
 
-# Perform CP decomposition
 score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [], "f1_score": [],
               'test_data_map_score': [], "test_data_recall_score": [], "test_data_f1_score": [], "time": []}
 test_df_recommendation = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
@@ -217,7 +216,7 @@ for init_kernel in INIT_KERNEL:
             test_data_recall_score = calculate_recall(test_df, k=K)
             test_data_f1_score = calculate_f1_score(test_df, k=K)
 
-            logger.info(f"Mean Average Precision (MAP@{K}) | train data: {map_score} | test data: {test_data_map_score} ")
+            logger.info(f"Mean Average Precision (mAP@{K}) | train data: {map_score} | test data: {test_data_map_score} ")
             logger.info(f"Recall@{K} | train data: {recall_score} | test data: {test_data_recall_score}")
             logger.info(f"F1@{K} | train data: {f1_score} | test data: {test_data_f1_score}")
             logger.info(f"Taken Time: {stop - start:.2f} seconds\n")
