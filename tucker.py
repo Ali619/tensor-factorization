@@ -4,6 +4,7 @@ import numpy as np
 import tensorly as tl
 from tensorly.decomposition import parafac, tucker
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
 from timeit import default_timer as timer
 import logging
 from logging.handlers import RotatingFileHandler
@@ -131,6 +132,26 @@ def get_top_k_recommendations(user_id, k:int=5):
                 top_k_items = np.argsort(scores)[::-1][:k]
                 return [le_item.inverse_transform([item])[0] for item in top_k_items]
 
+def preprocess_for_classification_report(test_df:pd.DataFrame) -> pd.DataFrame:
+    if "is_buying" not in test_df.columns:
+        test_df["is_buying"] = False
+    test_df["is_buying"] = test_df["rate"] > 0
+    return test_df
+
+def get_classification_report(test_df:pd.DataFrame, k:int=5):
+    recommendations = []
+    y_true = []
+    users = preprocess_for_classification_report(test_df)
+
+    for _, row in users.iterrows():
+        user_recs = get_top_k_recommendations(row["user"], k)
+        for item in user_recs:
+            recommendations.append(1 if item in row["item"] else 0)
+            y_true.append(1 if row["is_buying"] else 0)
+    
+    report = classification_report(y_true, recommendations, labels=[0, 1])
+    return report
+
 # Perform CP decomposition
 score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [],
               'test_data_map_score': [], "test_data_recall_score": [], "time": []}
@@ -178,6 +199,9 @@ for init_kernel in INIT_KERNEL:
             score_log['test_data_map_score'].append(test_data_map_score)
             score_log['test_data_recall_score'].append(test_data_recall_score)
             score_log['time'].append(round(stop-start, 2))
+
+            report = get_classification_report(test_df, k=K)
+            logger.info(f"Classification Report is done: \n{report}")
 
 score_log_df = pd.DataFrame(score_log)
 score_log_df.to_csv(f'./tucker-log/train-log-top{K}.csv', index=False)
