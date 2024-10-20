@@ -110,19 +110,20 @@ def calculate_map(test_df: pd.DataFrame, k: int = 5) -> float:
         num_users += 1
     return ap_sum / num_users if num_users > 0 else 0
 
-def calculate_recall(test_df:pd.DataFrame, k:int=5) -> float:
+def calculate_recall(test_df: pd.DataFrame, k:int=5) -> float:
     recall_sum = 0
     num_users = 0
 
     for user in test_df['user'].unique():
         actual_items = set(test_df[test_df['user'] == user]['item'])
         recommended_items = set(get_top_k_recommendations(user, k))
-
+        if not actual_items:
+            continue
         recall = len(actual_items.intersection(recommended_items)) / len(actual_items)
         recall_sum += recall
         num_users += 1
 
-    return recall_sum / num_users
+    return recall_sum / num_users if num_users > 0 else 0
 
 def get_top_k_recommendations(user_id, k:int=5):
     try:
