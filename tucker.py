@@ -46,6 +46,9 @@ K = 1
 
 logger = setup_logger(f'./tucker-log/top{K}-training.log')
 
+# log classification_report manually
+open(f"./tucker-log/classification_report-top{K}.txt", "w")
+
 # Set the TensorLy backend to NumPy for better performance
 tl.set_backend('numpy')
 np.random.seed(RANDOM_STATE)
@@ -202,6 +205,20 @@ for init_kernel in INIT_KERNEL:
 
             report = get_classification_report(test_df, k=K)
             logger.info(f"Classification Report is done: \n{report}")
+
+            with open(f"./tucker-log/classification_report-top{K}.txt", 'a') as f:
+                f.write("{:<10} | {:<6} | {:<12} | {:<13} | {:<13} | {:<13} | {:<8} | {:<8} | {:<20} | {:<20} | {:<4}\n".format(
+                            "init", "n_iter", "n_components", "user_factors", "item_factors", 
+                            "time_factors", "map_score", "recall_score", "test_data_map_score", 
+                            "test_data_recall_score", "time"
+                        ))
+                f.write(f"{init_kernel:<10} | {n_iter:<6} | {n_components:<12} | "
+                        f"{str(user_factors.shape):<13} | {str(item_factors.shape):<13} | "
+                        f"{str(time_factors.shape):<13} | {map_score:.8f} | "
+                        f"{recall_score:.8f} | {test_data_map_score:<20} | "
+                        f"{test_data_recall_score:<23} | {round(stop-start, 2):<4}\n")
+                f.write(f"{report}\n")
+                f.write("-" * 200 + "\n")
 
 score_log_df = pd.DataFrame(score_log)
 score_log_df.to_csv(f'./tucker-log/train-log-top{K}.csv', index=False)
