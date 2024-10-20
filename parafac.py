@@ -89,22 +89,26 @@ tensor = np.zeros(tensor_shape)
 for _, row in train_df.iterrows():
     tensor[row['user_encoded'], row['item_encoded'], row['time_encoded']] = row['rate']
 
-# Evaluate recommendations using Mean Average Precision (MAP)
-def calculate_map(test_df:pd.DataFrame, k:int=5) -> float:
+def calculate_map(test_df: pd.DataFrame, k: int = 5) -> float:
     ap_sum = 0
     num_users = 0
 
     for user in test_df['user'].unique():
-        actual_items = set(test_df[test_df['user'] == user]['item'])
-        recommended_items = set(get_top_k_recommendations(user, k))
-        
-        precision_sum = sum([1 if item in actual_items else 0 for item in recommended_items])
-        ap = precision_sum / min(k, len(actual_items))
-        
+        actual_items = test_df[test_df['user'] == user]['item'].tolist()
+        recommended_items = get_top_k_recommendations(user, k)
+        if not actual_items:
+            continue
+        ap = 0
+        hit_count = 0
+        for i, item in enumerate(recommended_items, start=1):
+            if item in actual_items:
+                hit_count += 1
+                ap += hit_count / i
+
+        ap /= min(len(actual_items), k)
         ap_sum += ap
         num_users += 1
-
-    return ap_sum / num_users
+    return ap_sum / num_users if num_users > 0 else 0
 
 def calculate_recall(test_df:pd.DataFrame, k:int=5) -> float:
     recall_sum = 0
