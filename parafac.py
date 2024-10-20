@@ -183,7 +183,9 @@ def get_classification_report(test_df:pd.DataFrame, k:int=5):
 # Perform CP decomposition
 score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [], "f1_score": [],
               'test_data_map_score': [], "test_data_recall_score": [], "test_data_f1_score": [], "time": []}
-test_df_recommendation = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': [], 'item_1': []}
+test_df_recommendation = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
+for i in range(K):
+    test_df_recommendation[f"item_{i+1}"] = []
 
 for init_kernel in INIT_KERNEL:
     for n_components in N_COMPONENTS:
