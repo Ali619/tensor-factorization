@@ -37,6 +37,12 @@ N_ITER = [100]
 N_COMPONENTS = [10, 20, 30, 50, 100, 200, 300]
 K = 1
 
+# RANDOM_STATE = 42
+# INIT_KERNEL = ["random"]
+# N_ITER = [5]
+# N_COMPONENTS = [5]
+# K = 1
+
 logger = setup_logger(f'./tucker-log/top{K}-training.log')
 
 # Set the TensorLy backend to NumPy for better performance
@@ -110,6 +116,21 @@ def calculate_recall(test_df:pd.DataFrame, k=5) -> float:
 
     return recall_sum / num_users
 
+def get_top_k_recommendations(user_id, k:int=5):
+                try:
+                    user_encoded = le_user.transform([user_id])[0]
+                    user_vector = user_factors[user_encoded]
+                except ValueError:
+                    logger.warning(f"User {user_id} not found in the training data. Using average user vector.")
+                    user_vector = np.mean(user_factors, axis=0)
+                
+                time_vector = np.mean(time_factors, axis=0)  # Average over time
+                
+                # Compute scores using Tucker decomposition
+                scores = np.einsum('i,j,k,ijk->j', user_vector, np.ones(item_factors.shape[1]), time_vector, core)
+                top_k_items = np.argsort(scores)[::-1][:k]
+                return [le_item.inverse_transform([item])[0] for item in top_k_items]
+
 # Perform CP decomposition
 score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [],
               'test_data_map_score': [], "test_data_recall_score": [], "time": []}
@@ -136,22 +157,6 @@ for init_kernel in INIT_KERNEL:
             score_log['user_factors'].append(str(user_factors.shape))
             score_log['item_factors'].append(str(item_factors.shape))
             score_log['time_factors'].append(str(time_factors.shape))
-
-            # Function to get top-k recommendations for a user
-            def get_top_k_recommendations(user_id, k:int=5):
-                try:
-                    user_encoded = le_user.transform([user_id])[0]
-                    user_vector = user_factors[user_encoded]
-                except ValueError:
-                    logger.warning(f"User {user_id} not found in the training data. Using average user vector.")
-                    user_vector = np.mean(user_factors, axis=0)
-                
-                time_vector = np.mean(time_factors, axis=0)  # Average over time
-                
-                # Compute scores using Tucker decomposition
-                scores = np.einsum('i,j,k,ijk->j', user_vector, np.ones(item_factors.shape[1]), time_vector, core)
-                top_k_items = np.argsort(scores)[::-1][:k]
-                return [le_item.inverse_transform([item])[0] for item in top_k_items]
             
             logger.info(f"Getting top-k recommendations from test data to start evaluation")
 
