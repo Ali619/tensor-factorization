@@ -125,6 +125,26 @@ def calculate_recall(test_df: pd.DataFrame, k:int=5) -> float:
 
     return recall_sum / num_users if num_users > 0 else 0
 
+def calculate_f1_score(test_df: pd.DataFrame, k: int = 5) -> float:
+    f1_sum = 0
+    num_users = 0
+
+    for user in test_df['user'].unique():
+        actual_items = set(test_df[test_df['user'] == user]['item'])
+        recommended_items = set(get_top_k_recommendations(user, k))
+        if not actual_items or not recommended_items:
+            continue
+        precision = len(actual_items.intersection(recommended_items)) / len(recommended_items)
+        recall = len(actual_items.intersection(recommended_items)) / len(actual_items)
+        if precision + recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * (precision * recall) / (precision + recall)
+
+        f1_sum += f1
+        num_users += 1
+    return f1_sum / num_users if num_users > 0 else 0
+
 def get_top_k_recommendations(user_id, k:int=5):
                 try:
                     user_encoded = le_user.transform([user_id])[0]
@@ -160,9 +180,8 @@ def get_classification_report(test_df:pd.DataFrame, k:int=5):
     report = classification_report(y_true, recommendations, labels=[0, 1])
     return report
 
-# Perform CP decomposition
-score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [],
-              'test_data_map_score': [], "test_data_recall_score": [], "time": []}
+score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [], "f1_score": [],
+              'test_data_map_score': [], "test_data_recall_score": [], "test_data_f1_score": [], "time": []}
 test_df_recommendation = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
 for i in range(K):
     test_df_recommendation[f'item_{i+1}'] = []
@@ -191,37 +210,42 @@ for init_kernel in INIT_KERNEL:
 
             map_score = calculate_map(train_df, k=K)
             recall_score = calculate_recall(train_df, k=K)
+            f1_score = calculate_f1_score(train_df, k=K)
 
             test_data_map_score = calculate_map(test_df, k=K)
             test_data_recall_score = calculate_recall(test_df, k=K)
-            
-            logger.info(f"Mean Average Precision (MAP@{K}) | train data: {map_score} | test data: {test_data_map_score}")
+            test_data_f1_score = calculate_f1_score(test_df, k=K)
+
+            logger.info(f"Mean Average Precision (mAP@{K}) | train data: {map_score} | test data: {test_data_map_score} ")
             logger.info(f"Recall@{K} | train data: {recall_score} | test data: {test_data_recall_score}")
+            logger.info(f"F1@{K} | train data: {f1_score} | test data: {test_data_f1_score}")
             logger.info(f"Taken Time: {stop - start:.2f} seconds\n")
 
             score_log['init'].append(init_kernel)
             score_log['n_iter'].append(n_iter)
-            score_log['n_components'].append(f'(33, {n_components}, 408)')
+            score_log['n_components'].append(n_components)
             score_log["map_score"].append(map_score)
             score_log['recall_score'].append(recall_score)
+            score_log["f1_score"].append(f1_score)
             score_log['test_data_map_score'].append(test_data_map_score)
             score_log['test_data_recall_score'].append(test_data_recall_score)
+            score_log["test_data_f1_score"].append(test_data_f1_score)
             score_log['time'].append(round(stop-start, 2))
 
             report = get_classification_report(test_df, k=K)
             logger.info(f"Classification Report is done: \n{report}")
-
+            
             with open(f"./tucker-log/classification_report-top{K}.txt", 'a') as f:
-                f.write("{:<10} | {:<6} | {:<12} | {:<13} | {:<13} | {:<13} | {:<8} | {:<8} | {:<20} | {:<20} | {:<4}\n".format(
+                f.write("{:<10} | {:<6} | {:<12} | {:<13} | {:<13} | {:<13} | {:<8} | {:<8} | {:<20} | {:<20} | {:<20} | {:<20} | {:<4}\n".format(
                             "init", "n_iter", "n_components", "user_factors", "item_factors", 
-                            "time_factors", "map_score", "recall_score", "test_data_map_score", 
-                            "test_data_recall_score", "time"
+                            "time_factors", "map_score", "recall_score", "f1_score", "test_data_map_score", 
+                            "test_data_recall_score", "test_data_f1_score", "time"
                         ))
                 f.write(f"{init_kernel:<10} | {n_iter:<6} | {n_components:<12} | "
                         f"{str(user_factors.shape):<13} | {str(item_factors.shape):<13} | "
                         f"{str(time_factors.shape):<13} | {map_score:.8f} | "
-                        f"{recall_score:.8f} | {test_data_map_score:<20} | "
-                        f"{test_data_recall_score:<23} | {round(stop-start, 2):<4}\n")
+                        f"{recall_score:.8f} | {f1_score:<20} | {test_data_map_score:<20} | "
+                        f"{test_data_recall_score:<23} | {test_data_f1_score:<10} | {round(stop-start, 2):<4}\n")
                 f.write(f"{report}\n")
                 f.write("-" * 200 + "\n")
 
