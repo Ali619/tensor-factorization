@@ -46,14 +46,8 @@ K = 1
 
 logger = setup_logger(f'./parafac-log/top{K}-training.log')
 
-# log manually
+# log classification_report manually
 open(f"./parafac-log/classification_report-top{K}.txt", "w")
-    
-with open(f'./parafac-log/manual-train-log-top{K}.csv', 'w') as f:
-    f.write('init,n_iter,n_components,user_factors,item_factors,time_factors,map_score,recall_score,test_data_map_score,test_data_recall_score,time\n')
-with open(f'./parafac-log/manual-top{K}-recommendation-test.csv', 'w') as f:
-    f.write('user_id,init,n_iter,n_components,item_1')
-    # f.write('user_id,init,n_iter,n_components,item_1,item_2,item_3,item_4,item_5')
 
 # Set the TensorLy backend to NumPy for better performance
 tl.set_backend('numpy')
@@ -141,19 +135,6 @@ def get_top_k_recommendations(user_id, k:int=5):
     
     return [le_item.inverse_transform([item])[0] for item in top_k_items]
 
-def get_recommendations(user_id, k:int=5) -> None:
-    recommendations = get_top_k_recommendations(user_id, k=k)
-    test_df_recommendation['user_id'].append(user_id)
-    test_df_recommendation['init'].append(init_kernel)
-    test_df_recommendation['n_iter'].append(n_iter)
-    test_df_recommendation['n_components'].append(n_components)
-
-    with open(f"./parafac-log/manual-top{K}-recommendation-test.csv", "a") as f: # log manually
-        f.write(f'\n{user_id},{init_kernel},{n_iter},{n_components},')
-        for i, item in enumerate(recommendations, 1):
-            test_df_recommendation[f'item_{i}'].append(item)
-            f.write(f'{item},')
-
 def preprocess_for_classification_report(test_df:pd.DataFrame) -> pd.DataFrame:
     if "is_buying" not in test_df.columns:
         test_df["is_buying"] = False
@@ -163,13 +144,12 @@ def preprocess_for_classification_report(test_df:pd.DataFrame) -> pd.DataFrame:
 def get_classification_report(test_df:pd.DataFrame, k:int=5):
     recommendations = []
     y_true = []
-    users = preprocess_for_classification_report(test_df)  
+    users = preprocess_for_classification_report(test_df)
     for _, row in users.iterrows():
         user_recs = get_top_k_recommendations(row["user"], k)
         for item in user_recs:
             recommendations.append(1 if item in row["item"] else 0)
             y_true.append(1 if row["is_buying"] else 0)
-    # Calculate and return the classification report
     report = classification_report(y_true, recommendations, labels=[0, 1])
     return report
 
@@ -199,9 +179,7 @@ for init_kernel in INIT_KERNEL:
             score_log['time_factors'].append(str(time_factors.shape))
 
             logger.info(f"Getting top-k recommendations for test data")
-            for user_id in test_df['user'].unique():
-                get_recommendations(user_id, k=K)
-                
+
             map_score = calculate_map(train_df, k=K)
             recall_score = calculate_recall(train_df, k=K)
 
@@ -223,6 +201,7 @@ for init_kernel in INIT_KERNEL:
 
             report = get_classification_report(test_df, k=K)
             logger.info(f"Classification Report is done: \n{report}")
+            
             with open(f"./parafac-log/classification_report-top{K}.txt", 'a') as f:
                 f.write("{:<10} | {:<6} | {:<12} | {:<13} | {:<13} | {:<13} | {:<8} | {:<8} | {:<20} | {:<20} | {:<4}\n".format(
                             "init", "n_iter", "n_components", "user_factors", "item_factors", 
@@ -236,10 +215,6 @@ for init_kernel in INIT_KERNEL:
                         f"{test_data_recall_score:<23} | {round(stop-start, 2):<4}\n")
                 f.write(f"{report}\n")
                 f.write("-" * 200 + "\n")
-
-            # log manually
-            with open(f"./parafac-log/manual-train-log-top{K}.csv", 'a') as f:
-                f.write(f'{init_kernel},{n_iter},{n_components},"{user_factors.shape}","{item_factors.shape}","{time_factors.shape}",{map_score},{recall_score},{test_data_map_score},{test_data_recall_score},{round(stop-start, 2)}\n')
 
 score_log_df = pd.DataFrame(score_log)
 score_log_df.to_csv(f'./parafac-log/train-log-top{K}.csv', index=False)
