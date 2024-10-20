@@ -207,7 +207,7 @@ for init_kernel in INIT_KERNEL:
             score_log['item_factors'].append(str(item_factors.shape))
             score_log['time_factors'].append(str(time_factors.shape))
 
-            logger.info(f"Getting top-k recommendations for test data")
+            logger.info(f"Getting top-k recommendations from test data to start evaluation")
 
             map_score = calculate_map(train_df, k=K)
             recall_score = calculate_recall(train_df, k=K)
