@@ -56,6 +56,7 @@ np.random.seed(RANDOM_STATE)
 def preprocess_data(df:pd.DataFrame, test_size:float=0.8) -> tuple[pd.DataFrame, pd.DataFrame]:
     df["time"] = to_datetime(df["time"])
     df['timestamp'] = df['time'].astype(int) // 10**9
+    df['rate'] = df.groupby('item')['rate'].transform(lambda x: x / np.abs(x).max()) # using abs, because there are negative values in rate
     df = df.sort_values(by="time")
     
     split = int(len(df) * test_size)
