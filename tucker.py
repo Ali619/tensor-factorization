@@ -244,12 +244,13 @@ for init_kernel in INIT_KERNEL:
                 f.write(f"{report}\n")
                 f.write("-" * 200 + "\n")
 
-            output_recs['init'].append(init_kernel)
-            output_recs['n_iter'].append(n_iter)
-            output_recs['n_components'].append(n_components)
             for user in test_df['user'].unique():
+                output_recs['init'].append(init_kernel)
+                output_recs['n_iter'].append(n_iter)
+                output_recs['n_components'].append(n_components)
+                output_recs['user_id'].append(user)
                 result = get_top_k_recommendations(user_id=user, k=K)
-                for item in result:
+                for i, item in enumerate(result):
                     output_recs[f"item_{i+1}"].append(item)
 
 score_log_df = pd.DataFrame(score_log)
