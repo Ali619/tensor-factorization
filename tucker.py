@@ -182,9 +182,9 @@ def get_classification_report(test_df:pd.DataFrame, k:int=5):
 
 score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [], "f1_score": [],
               'test_data_map_score': [], "test_data_recall_score": [], "test_data_f1_score": [], "time": []}
-test_df_recommendation = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
+output_recs = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
 for i in range(K):
-    test_df_recommendation[f'item_{i+1}'] = []
+    output_recs[f'item_{i+1}'] = []
     
 for init_kernel in INIT_KERNEL:
     for n_components in N_COMPONENTS:
@@ -249,7 +249,15 @@ for init_kernel in INIT_KERNEL:
                 f.write(f"{report}\n")
                 f.write("-" * 200 + "\n")
 
+            output_recs['init'].append(init_kernel)
+            output_recs['n_iter'].append(n_iter)
+            output_recs['n_components'].append(n_components)
+            for user in test_df['user'].unique():
+                result = get_top_k_recommendations(user_id=user, k=K)
+                for item in result:
+                    output_recs[f"item_{i+1}"].append(item)
+
 score_log_df = pd.DataFrame(score_log)
 score_log_df.to_csv(f'./tucker-log/train-log-top{K}.csv', index=False)
-test_df_recommendation = pd.DataFrame(test_df_recommendation)
-test_df_recommendation.to_csv(f'./tucker-log/top{K}-recommendation-test.csv', index=False)
+output_recs = pd.DataFrame(output_recs)
+output_recs.to_csv(f'./tucker-log/top{K}-recommendation-test.csv', index=False)
