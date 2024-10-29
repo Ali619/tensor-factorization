@@ -38,12 +38,6 @@ N_ITER = [100]
 N_COMPONENTS = [10, 20, 30, 50, 100, 200, 300]
 K = 1
 
-# RANDOM_STATE = 42
-# INIT_KERNEL = ["random"]
-# N_ITER = [5]
-# N_COMPONENTS = [5]
-# K = 1
-
 logger = setup_logger(f'./tucker-log/top{K}-training.log')
 
 # log classification_report manually
