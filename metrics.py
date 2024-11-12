@@ -1,45 +1,23 @@
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report
-from preprocess import preprocess_for_classification_report
+from sklearn.preprocessing import LabelEncoder
 
-def get_top_k_recommendations(user_id, time_id, le_user, user_factors,
-                                le_time, time_factors, 
-                                le_item, item_factors, weights, logger, k:int=5):
-    try:
-        user_encoded = le_user.transform([user_id])[0]
-    except ValueError:
-        logger.warning(f"User {user_id} or time {time_id} not found in the training data.")
-        user_vector = np.mean(user_factors, axis=0) # Average over users
-    
-    try:
-        time_encoded = le_time.transform([time_id])[0]
-    except ValueError:
-        logger.warning(f"Time {time_id} not found in the training data.")
-        time_vector = np.mean(time_factors, axis=0)  # Average over time
-    
-    user_vector = user_factors[user_encoded]
-    time_vector = time_factors[time_encoded]
-    
-    # Calculate predicted rate for all items at the specific time
-    scores = []
-    for item in range(item_factors.shape[0]):
-        item_vector = item_factors[item]
-        prediction = sum(weights[r] * user_vector[r] * item_vector[r] * time_vector[r] 
-                        for r in range(len(weights)))
-        scores.append(prediction)
-    
-    scores = np.array(scores)
-    top_k_items = np.argsort(scores)[::-1][:k]
-    
-    return [le_item.inverse_transform([item])[0] for item in top_k_items]
+# Function to get recommendations for a specific user and time
+def get_recommendations(user_id, time_id, le_user: LabelEncoder, le_time: LabelEncoder, factorized_tensor, k) -> np.ndarray:
+    """Get top-k recommendations with scores"""
+    user_encoded = le_user.transform([user_id])[0]
+    time_encoded = le_time.transform([time_id])[0]
+
+    user_predictions = factorized_tensor[user_encoded, :, time_encoded]
+    top_items = np.argsort(user_predictions)[-k:][::-1] # Get K-latest values and reverse output from highest to lowest
+   
+    return top_items
 
 def calculate_map(test_df: pd.DataFrame, user_recs: dict, k: int = 5) -> float:
     ap_sum = 0
     num_users = 0
-
     for user in test_df['user'].unique():
-        actual_items = test_df[test_df['user'] == user]['item'].tolist()
+        actual_items = (test_df[test_df['user'] == user]['item']).to_list()
         # recommended_items = get_top_k_recommendations(user, k)
         recommended_items = user_recs[user]
         if not actual_items:
@@ -94,15 +72,3 @@ def calculate_f1_score(test_df: pd.DataFrame, user_recs: dict, k: int = 5) -> fl
         f1_sum += f1
         num_users += 1
     return f1_sum / num_users if num_users > 0 else 0
-
-def get_classification_report(test_df:pd.DataFrame, user_recs: dict, k:int=5):
-    recommendations = []
-    y_true = []
-    users = preprocess_for_classification_report(test_df)
-    for _, row in users.iterrows():
-        user_recs = get_top_k_recommendations(row["user"], k)
-        for item in user_recs:
-            recommendations.append(1 if item in row["item"] else 0)
-            y_true.append(1 if row["is_buying"] else 0)
-    report = classification_report(y_true, recommendations, labels=[0, 1])
-    return report
