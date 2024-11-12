@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.vscode
 
 # C extensions
 *.so
@@ -167,3 +168,5 @@ cython_debug/
 *.gz
 *.csv
 *.txt
+*.todo
+*.pseudo
