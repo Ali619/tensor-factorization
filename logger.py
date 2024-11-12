@@ -1,17 +1,12 @@
+import pandas as pd
 import logging
 from logging.handlers import RotatingFileHandler
 import datetime
 import sys
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-K = os.getenv("K")
 
 time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
 
-def setup_logger(log_file:str=f'./parafac-log/training-{time}.log', console_level=logging.INFO, file_level=logging.DEBUG) -> logging:
+def logger(log_file:str=f'./parafac-log/training-{time}.log', console_level=logging.INFO, file_level=logging.DEBUG) -> logging:
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
@@ -31,15 +26,16 @@ def setup_logger(log_file:str=f'./parafac-log/training-{time}.log', console_leve
 
     return logger
 
-
-score_log = {'init': [], 'n_iter': [], 'n_components': [], 'user_factors': [], 'item_factors': [], 'time_factors': [], 'map_score': [], 'recall_score': [], "f1_score": [],
-              'test_data_map_score': [], "test_data_recall_score": [], "test_data_f1_score": [], "time": []}
-output_recs = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
-for i in range(K):
-    output_recs[f"item_{i+1}"] = []
-
 class TrainTestLog():
-    def __init__(self):
+    def __init__(self, k):
+        self.k = k
+        self.score_log = {'init': [], 'n_iter': [], 'n_components': [], 'map_score': [], 'recall_score': [], "f1_score": [],
+                            'test_data_map_score': [], "test_data_recall_score": [], "test_data_f1_score": [], "time": []}
+        self.output_recs = {'user_id': [], 'init': [], 'n_iter': [], 'n_components': []}
+        for i in range(self.k):
+            self.output_recs[f"item_{i+1}"] = []
+
+        # For score log
         self.user_factors = None
         self.item_factors = None
         self.time_factors = None
@@ -63,39 +59,21 @@ class TrainTestLog():
 
     def update_output_recs(self, params: dict):
         for key, value in params.items():
-            if key not in output_recs:
-                output_recs[key] = []
-            output_recs[key].append(value)
+            if key not in self.output_recs:
+                self.output_recs[key] = []
+            self.output_recs[key].append(value)
 
     def update_score_log(self, params: dict):
         for key, value in params.items():
-            if key not in score_log:
-                score_log[key] = []
-            score_log[key].append(value)
-
-    # def update_train_user_recs(self, **params):
-    #     for key, value in params.items():
-    #         if key not in train_user_recs:
-    #             train_user_recs[key] = []
-    #         train_user_recs[key].append(value)
-
-    # def update_test_user_recs(self, **params):
-    #     for key, value in params.items():
-    #         if key not in test_user_recs:
-    #             test_user_recs[key] = []
-    #         test_user_recs[key].append(value)
-
-    # def get_train_user_recs(self):
-    #     return train_user_recs
-
-    # def get_test_user_recs(self):
-    #     return test_user_recs
+            if key not in self.score_log:
+                self.score_log[key] = []
+            self.score_log[key].append(value)
 
     def get_score_log(self):
-        return score_log
+        return self.score_log
 
     def get_output_recs(self):
-        return output_recs
+        return self.output_recs
 
     def get_params(self):
         return {
@@ -118,3 +96,9 @@ class TrainTestLog():
             'n_iter': self.n_iter,
             'n_components': self.n_components
         }
+
+    def create_csv(self):
+        self.score_log_df = pd.DataFrame(self.score_log)
+        self.output_recs_df = pd.DataFrame(self.output_recs)
+        self.score_log_df.to_csv(f'./parafac-log/training-log-top{self.k}-{time}.csv', index=False)
+        self.output_recs_df.to_csv(f'./parafac-log/Top-{self.k} Recommendation on testData - {time}.csv', index=False)
