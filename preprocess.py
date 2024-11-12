@@ -3,6 +3,11 @@ import numpy as np
 from pandas import to_datetime
 
 def preprocess_data(path: str, test_size: float=0.8, split: bool=True) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
+    """Retrun split dataframes for train and test data
+    
+    Parameters:
+        `split`: If `False`, it will return the whole dataframe without spliting it to train and test, default is `True`.
+    """
     df = pd.read_csv(path)
     df["time"] = to_datetime(df["time"])
     df['timestamp'] = df['time'].astype(int) // 10**9
