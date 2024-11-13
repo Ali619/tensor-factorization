@@ -105,6 +105,7 @@ for init_kernel in INIT_KERNEL:
                                             'time': round(stop-start, 2)})
             logger.info(train_test_log.get_score_log())
 
+            # Get prediction. Will be used to create a csv file after training will be done
             for user in test_df['user'].unique():
                 item = []
                 train_test_log.update_output_recs({'init': init_kernel, 'n_iter': n_iter, 'n_components': n_components, 'user_id': user})
