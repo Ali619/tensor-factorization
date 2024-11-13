@@ -1,5 +1,3 @@
-from collections import defaultdict
-import pandas as pd
 import numpy as np
 import tensorly as tl
 from tensorly.decomposition import parafac
@@ -8,14 +6,17 @@ from timeit import default_timer as timer
 from metrics import calculate_map, calculate_recall, calculate_f1_score, get_recommendations
 from logger import TrainTestLog, logger
 from preprocess import preprocess_data
+from dotenv import load_dotenv
+import os
 
-DATA_PATH = "./data/tensor.csv"
+load_dotenv()
 
-RANDOM_STATE = 42
-INIT_KERNEL = ['random', 'svd']
-N_ITER = [5]
-N_COMPONENTS = [10, 20]
-K = 1
+DATA_PATH = os.getenv('DATA_PATH')
+RANDOM_STATE = int(os.getenv('RANDOM_STATE'))
+INIT_KERNEL = os.getenv('INIT_KERNEL').split(',')
+N_ITER = list(map(int, os.getenv('N_ITER').split(',')))
+N_COMPONENTS = list(map(int, os.getenv('N_COMPONENTS').split(',')))
+K = int(os.getenv('K'))
 
 logger = logger()
 train_test_log = TrainTestLog(k=K)
@@ -61,7 +62,7 @@ test_user_recs = {}
 for init_kernel in INIT_KERNEL:
     for n_components in N_COMPONENTS:
         for n_iter in N_ITER:
-            logger.info(f"\nTraining for init: {init_kernel} | n_components: {n_components} | n_iter: {n_iter}")
+            logger.info(f"Training for init: {init_kernel} | n_components: {n_components} | n_iter: {n_iter}")
             start = timer()
             try:    
                 cp_tensor = parafac(tensor, rank=n_components, n_iter_max=n_iter, init=init_kernel, random_state=RANDOM_STATE, verbose=1)
@@ -84,25 +85,26 @@ for init_kernel in INIT_KERNEL:
                                                                 le_user=le_user, le_time=le_time, factorized_tensor=factorized_tensor)
             
             # print("getting eval for mAP and others for train")
-            map_score = calculate_map(train_df, train_user_recs, k=K)
-            recall_score = calculate_recall(train_df, train_user_recs, k=K)
-            f1_score = calculate_f1_score(train_df, train_user_recs, k=K)
+            map_score = calculate_map(train_df, train_user_recs, le_item, k=K)
+            recall_score = calculate_recall(train_df, train_user_recs, le_item, k=K)
+            f1_score = calculate_f1_score(train_df, train_user_recs, le_item, k=K)
 
             for user in test_df['user'].unique():
                 users = test_df[test_df["user"] == user]
                 for time_id in users["timestamp"].unique():
                     test_user_recs[user] = get_recommendations(user_id=user, time_id=time_id, k=K,
-                                                                le_user=le_user, le_time=le_time, factorized_tensor=factorized_tensor)
-
-            test_data_map_score = calculate_map(test_df, test_user_recs, k=K)
-            test_data_recall_score = calculate_recall(test_df, test_user_recs, k=K)
-            test_data_f1_score = calculate_f1_score(test_df, test_user_recs, k=K)
-
+                                                               le_user=le_user, le_time=le_time, factorized_tensor=factorized_tensor)
+            
+            test_data_map_score = calculate_map(test_df, test_user_recs, le_item, k=K)
+            test_data_recall_score = calculate_recall(test_df, test_user_recs, le_item, k=K)
+            test_data_f1_score = calculate_f1_score(test_df, test_user_recs, le_item, k=K)
+            
             train_test_log.update_score_log({'init': init_kernel, 'n_iter': n_iter, 'n_components': n_components, 
                                             'map_score': map_score, 'recall_score': recall_score, 'f1_score': f1_score, 
                                             'test_data_map_score': test_data_map_score, 'test_data_recall_score': test_data_recall_score, 'test_data_f1_score': test_data_f1_score, 
                                             'time': round(stop-start, 2)})
-            
+            logger.info(train_test_log.get_score_log())
+
             for user in test_df['user'].unique():
                 item = []
                 train_test_log.update_output_recs({'init': init_kernel, 'n_iter': n_iter, 'n_components': n_components, 'user_id': user})

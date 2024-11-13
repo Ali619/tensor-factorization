@@ -53,7 +53,7 @@ class TrainTestLog():
         self.n_iter = None
         self.n_components = None
     
-    def update_params(self, **params):
+    def update_params(self, params):
         for key, value in params.items():
             setattr(self, key, value)
 
@@ -64,14 +64,34 @@ class TrainTestLog():
             self.output_recs[key].append(value)
 
     def update_score_log(self, params: dict):
+        self.update_params(params=params)
         for key, value in params.items():
             if key not in self.score_log:
                 self.score_log[key] = []
             self.score_log[key].append(value)
 
-    def get_score_log(self):
-        return self.score_log
+    def __get_score_log_train(self):
+        return f"""
+            'mAP': {self.map_score:.5f} \
+            'recall': {self.recall_score:.5f} \
+            'f1_score': {self.f1_score:.5f} \
+            'time': {self.time:.2f}
+        """
+    
+    def __get_score_log_test(self):
+        return f"""
+            'mAP': {self.test_data_map_score:.5f} \
+            'recall': {self.test_data_recall_score:.5f} \
+            'f1_score': {self.test_data_f1_score:.5f} \
+            'time': {self.time:.2f}
+        """
 
+    def get_score_log(self):
+        return f"""
+            Train data Evaluation: {self.__get_score_log_train()}
+            Test data Evaluation: {self.__get_score_log_test()}
+        """
+    
     def get_output_recs(self):
         return self.output_recs
 

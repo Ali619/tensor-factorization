@@ -13,13 +13,12 @@ def get_recommendations(user_id, time_id, le_user: LabelEncoder, le_time: LabelE
    
     return top_items
 
-def calculate_map(test_df: pd.DataFrame, user_recs: dict, k: int = 5) -> float:
+def calculate_map(test_df: pd.DataFrame, user_recs: dict, le_item: LabelEncoder, k: int=5) -> float:
     ap_sum = 0
     num_users = 0
     for user in test_df['user'].unique():
         actual_items = (test_df[test_df['user'] == user]['item']).to_list()
-        # recommended_items = get_top_k_recommendations(user, k)
-        recommended_items = user_recs[user]
+        recommended_items = [le_item.inverse_transform(np.array([i])).item() for i in user_recs[user]]
         if not actual_items:
             continue
         ap = 0
@@ -34,14 +33,13 @@ def calculate_map(test_df: pd.DataFrame, user_recs: dict, k: int = 5) -> float:
         num_users += 1
     return ap_sum / num_users if num_users > 0 else 0
 
-def calculate_recall(test_df: pd.DataFrame, user_recs: dict, k:int=5) -> float:
+def calculate_recall(test_df: pd.DataFrame, user_recs: dict, le_item: LabelEncoder, k:int=5) -> float:
     recall_sum = 0
     num_users = 0
 
     for user in test_df['user'].unique():
         actual_items = set(test_df[test_df['user'] == user]['item'])
-        # recommended_items = set(get_top_k_recommendations(user, k))
-        recommended_items = set(user_recs[user])
+        recommended_items = set([le_item.inverse_transform(np.array([i])).item() for i in user_recs[user]])
         if not actual_items:
             continue
         recall = len(actual_items.intersection(recommended_items)) / len(actual_items)
@@ -50,14 +48,14 @@ def calculate_recall(test_df: pd.DataFrame, user_recs: dict, k:int=5) -> float:
 
     return recall_sum / num_users if num_users > 0 else 0
 
-def calculate_f1_score(test_df: pd.DataFrame, user_recs: dict, k: int = 5) -> float:
+def calculate_f1_score(test_df: pd.DataFrame, user_recs: dict, le_item: LabelEncoder, k: int = 5) -> float:
     f1_sum = 0
     num_users = 0
 
     for user in test_df['user'].unique():
         actual_items = set(test_df[test_df['user'] == user]['item'])
         # recommended_items = set(get_top_k_recommendations(user, k))
-        recommended_items = set(user_recs[user])
+        recommended_items = set([le_item.inverse_transform(np.array([i])).item() for i in user_recs[user]])
         if not actual_items or not recommended_items:
             continue
         
