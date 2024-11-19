@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from pandas import to_datetime
 
-def preprocess_data(path: str, test_size: float=0.8, split: bool=True) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
+def preprocess_data(path: str, train_size: float=0.8, split: bool=True) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
     """Retrun split dataframes for train and test data
     
     Parameters:
@@ -11,12 +11,12 @@ def preprocess_data(path: str, test_size: float=0.8, split: bool=True) -> tuple[
     df = pd.read_csv(path)
     df["time"] = to_datetime(df["time"])
     df['timestamp'] = df['time'].astype(int) // 10**9
-    df['rate'] = df.groupby('item')['rate'].transform(lambda x: x / x.max()) 
+    df['rate'] = df.groupby('item')['rate'].transform(lambda x: x / x.abs().max())
     df = df.sort_values(by="time")
-    
+
     if not split:
         return df
-    split = int(len(df) * test_size)
+    split = int(len(df) * train_size)
     train_df, test_df = df[:split], df[split:]
     return train_df, test_df
 
