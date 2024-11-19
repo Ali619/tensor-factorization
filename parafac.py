@@ -48,8 +48,7 @@ tensor_shape = (
 )
 
 tensor = np.zeros(tensor_shape)
-for _, row in full_df.iterrows():
-    tensor[row['user_encoded'], row['item_encoded'], row['time_encoded']] = row['rate']
+tensor[full_df['user_encoded'], full_df['item_encoded'], full_df['time_encoded']] = full_df['rate'].values
 
 org_tensor = tensor.copy()
 split = len(train_df['timestamp'].unique())
