@@ -6,17 +6,13 @@ from timeit import default_timer as timer
 from metrics import calculate_map, calculate_recall, calculate_f1_score, get_recommendations
 from logger import TrainTestLog, logger
 from preprocess import preprocess_data
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-
-DATA_PATH = os.getenv('DATA_PATH')
-RANDOM_STATE = int(os.getenv('RANDOM_STATE'))
-INIT_KERNEL = os.getenv('INIT_KERNEL').split(',')
-N_ITER = list(map(int, os.getenv('N_ITER').split(',')))
-N_COMPONENTS = list(map(int, os.getenv('N_COMPONENTS').split(',')))
-K = int(os.getenv('K'))
+RANDOM_STATE = 42
+DATA_PATH = './data/tensor.csv'
+INIT_KERNEL = ['random', 'svd']
+N_ITER = [100]
+N_COMPONENTS = [10, 20, 30, 50, 100, 200, 300]
+K = 1
 
 logger = logger()
 train_test_log = TrainTestLog(k=K)
