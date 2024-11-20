@@ -3,7 +3,7 @@ import tensorly as tl
 from tensorly.decomposition import parafac
 from sklearn.preprocessing import LabelEncoder
 from timeit import default_timer as timer
-from metrics import calculate_map, calculate_recall, calculate_f1_score, get_recommendations
+from metrics import calculate_map, calculate_recall, calculate_f1_score, eval_flatten_calc, get_recommendations
 from logger import TrainTestLog, logger
 from preprocess import preprocess_data
 
@@ -70,6 +70,9 @@ for init_kernel in INIT_KERNEL:
             factorized_tensor = tl.cp_to_tensor(cp_tensor)
             sparsity = 1.0 - (np.count_nonzero(factorized_tensor) / float(factorized_tensor.size))
             logger.info(f'sparsity % after factorization: {sparsity}')
+            
+            metrics = eval_flatten_calc(org_tensor[:, :, split:], factorized_tensor[:, :, split:])
+            logger.info(f"eval metrics based on flatten tensors: \n --->{[(key, value) for key, value in metrics.items()]}")
             
             logger.info(f"Getting top-k recommendations for train and test data to start evaluation")
             for user in train_df['user'].unique():

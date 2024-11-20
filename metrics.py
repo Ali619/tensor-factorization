@@ -13,6 +13,43 @@ def get_recommendations(user_id, time_id, le_user: LabelEncoder, le_time: LabelE
    
     return top_items
 
+def eval_flatten_calc(y_true: np.array, y_pred: np.array) -> dict:
+    """This function will get Original test data tensor and Refactore test data tensor, convert them to 1-d array (`flatten`)
+    and return evaluation metrics values.    
+    """
+    y_true = y_true.flatten()
+    y_pred = y_pred.flatten()
+
+    assert len(y_true) == len(y_pred), "Length of y_true and y_pred must be the same."
+    assert np.all(y_true >= 0), "There is negative values in y_true"
+    assert np.all(y_pred >= 0), "There is negative values in y_pred"
+
+    y_true_bool = y_true.astype(bool)
+    y_pred_bool = y_pred.astype(bool)
+    true_positives = np.sum(y_true_bool & y_pred_bool)
+
+    # Calculate precision
+    predicted_positives = np.sum(y_pred_bool)
+    if predicted_positives == 0:
+        precision = 0.0
+    else:
+        precision = true_positives / predicted_positives
+
+    # Calculate recall
+    actual_positives = np.sum(y_true_bool)
+    if actual_positives == 0:
+        recall = 0.0
+    else:
+        recall = true_positives / actual_positives
+
+    # Calculate F1 score
+    if (precision + recall) == 0:
+        f1_score = 0.0
+    else:
+        f1_score = 2 * (precision * recall) / (precision + recall)
+
+    return {'precision': precision, 'recall': recall, 'f1_score': f1_score}
+
 def calculate_map(test_df: pd.DataFrame, user_recs: dict, le_item: LabelEncoder, k: int=5) -> float:
     ap_sum = 0
     num_users = 0
