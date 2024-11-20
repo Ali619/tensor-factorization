@@ -3,10 +3,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 import datetime
 import sys
+import os
 
 time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
 
 def logger(log_file:str=f'./parafac-log/training-{time}.log', console_level=logging.INFO, file_level=logging.DEBUG) -> logging:
+    if not os.path.exists('./parafac-log'):
+        os.makedirs('./parafac-log', exist_ok=True)
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
