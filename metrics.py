@@ -21,9 +21,8 @@ def eval_flatten_calc(y_true: np.array, y_pred: np.array) -> dict:
     y_pred = y_pred.flatten()
 
     assert len(y_true) == len(y_pred), "Length of y_true and y_pred must be the same."
-    assert np.all(y_true >= 0), "There is negative values in y_true"
-    assert np.all(y_pred >= 0), "There is negative values in y_pred"
-
+    assert np.all(y_true >= 0) and np.all(y_pred >= 0), "There is negative values in y_true or y_pred"
+    
     y_true_bool = y_true.astype(bool)
     y_pred_bool = y_pred.astype(bool)
     true_positives = np.sum(y_true_bool & y_pred_bool)
@@ -48,7 +47,7 @@ def eval_flatten_calc(y_true: np.array, y_pred: np.array) -> dict:
     else:
         f1_score = 2 * (precision * recall) / (precision + recall)
 
-    return {'precision': precision, 'recall': recall, 'f1_score': f1_score}
+    return {'precision': float(precision), 'recall': float(recall), 'f1_score': float(f1_score)}
 
 def calculate_map(test_df: pd.DataFrame, user_recs: dict, le_item: LabelEncoder, k: int=5) -> float:
     ap_sum = 0
