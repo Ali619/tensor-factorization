@@ -170,3 +170,4 @@ cython_debug/
 *.txt
 *.todo
 *.pseudo
+*.pdf
