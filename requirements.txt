@@ -4,3 +4,5 @@ scikit-learn==1.5.2
 scipy==1.14.1
 tensorly==0.8.1
 python-dotenv==1.0.1
+torch==2.4.1
+packaging==24.2

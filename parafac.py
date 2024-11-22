@@ -1,6 +1,7 @@
 import numpy as np
+import torch
 import tensorly as tl
-from tensorly.decomposition import parafac
+from tensorly.decomposition import parafac, non_negative_parafac
 from sklearn.preprocessing import LabelEncoder
 from timeit import default_timer as timer
 from metrics import calculate_map, calculate_recall, calculate_f1_score, eval_flatten_calc, get_recommendations
@@ -13,13 +14,17 @@ INIT_KERNEL = ['random', 'svd']
 N_ITER = [100]
 N_COMPONENTS = [10, 20, 30, 50, 100, 200, 300]
 K = 1
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+print(f'Device is: {DEVICE}')
 
 logger = logger()
 train_test_log = TrainTestLog(k=K)
 
 # Set the TensorLy backend to NumPy for better performance
-tl.set_backend('numpy')
+tl.set_backend('numpy' if DEVICE == 'cpu' else 'pytorch')
 np.random.seed(RANDOM_STATE)
+torch.manual_seed(RANDOM_STATE)
 
 train_df, test_df = preprocess_data(path=DATA_PATH)
 full_df =  preprocess_data(path=DATA_PATH, split=False)
@@ -47,6 +52,8 @@ tensor = np.zeros(tensor_shape)
 tensor[full_df['user_encoded'], full_df['item_encoded'], full_df['time_encoded']] = full_df['rate'].values
 
 org_tensor = tensor.copy()
+if DEVICE == 'cuda':
+    tensor = torch.from_numpy(tensor).type(dtype=torch.float32).to(DEVICE)
 split = len(train_df['timestamp'].unique())
 tensor[:, :, split:] = 0
 
@@ -60,18 +67,22 @@ for init_kernel in INIT_KERNEL:
             logger.info(f"Training for init: {init_kernel} | n_components: {n_components} | n_iter: {n_iter}")
             start = timer()
             try:    
-                cp_tensor = parafac(tensor, rank=n_components, n_iter_max=n_iter, init=init_kernel, random_state=RANDOM_STATE, verbose=1)
+                cp_tensor = non_negative_parafac(tensor, rank=n_components, n_iter_max=n_iter, init=init_kernel,
+                                     random_state=RANDOM_STATE, verbose=1)
             except Exception as e:
                 logger.error(f"ERROR: {e}")
                 logger.error(f"Failed for init: {init_kernel} | n_components: {n_components} | n_iter: {n_iter}")
                 continue
             stop = timer()
-            
+
             factorized_tensor = tl.cp_to_tensor(cp_tensor)
+            if torch.is_tensor(factorized_tensor):
+                factorized_tensor = factorized_tensor.cpu().numpy()
+            
             sparsity = 1.0 - (np.count_nonzero(factorized_tensor) / float(factorized_tensor.size))
             logger.info(f'sparsity % after factorization: {sparsity}')
             
-            metrics = eval_flatten_calc(org_tensor[:, :, split:], factorized_tensor[:, :, split:])
+            metrics = eval_flatten_calc(y_true=org_tensor[:, :, split:], y_pred=factorized_tensor[:, :, split:])
             logger.info(f"eval metrics based on flatten tensors: \n --->{[(key, value) for key, value in metrics.items()]}")
             
             logger.info(f"Getting top-k recommendations for train and test data to start evaluation")
