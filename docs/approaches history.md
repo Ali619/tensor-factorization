@@ -44,3 +44,9 @@ The accuracy of this method is shown below, measured using the **F1** score:
 > **NOTE:** This number is calculated by comparing **flattened** train data and test data.
 
 Also, the average of F1 for each combination of `(user, time)` is: **0.07655**.
+
+### Here is the all results since the begining:
+
+Linear Regression (MSE)| Naive Bayes | XGBoost  | Random Foresst | History Search | Recommendation System | Recommendation System (for each user) |
+---                    | ---         | ---      | ---            | ---            | ---                   | ---                                   |
+38.124                 | 0.191       |	0.470   | 0.444          | 0.206          | 0.0019                | 0.07655                               |
