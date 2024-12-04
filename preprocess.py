@@ -11,7 +11,13 @@ def preprocess_data(path: str, train_size: float=0.8, split: bool=True) -> tuple
     df = pd.read_csv(path)
     df["time"] = to_datetime(df["time"])
     df['timestamp'] = df['time'].astype(int) // 10**9
-    df['rate'] = df.groupby('item')['rate'].transform(lambda x: (x / x.max()) * (x > 0))
+
+    df = df[df['rate'] >= 0]
+    df['orginal_rate'] = df['rate'].copy()
+    df['original_item'] = df['item'].copy()
+    df['max'] = df.groupby('item')['rate'].transform(lambda x: x.max())
+    df['rate'] = df.groupby('item')['rate'].transform(lambda x: x / x.max())
+
     df = df.sort_values(by="time")
 
     if not split:
