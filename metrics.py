@@ -13,6 +13,21 @@ def get_recommendations(user_id, time_id, le_user: LabelEncoder, le_time: LabelE
    
     return top_items
 
+def convert_result_to_org_format(test_df: pd.DataFrame, le_user: LabelEncoder, le_item: LabelEncoder, le_time: LabelEncoder, k: int, factorized_tensor) -> pd.DataFrame:
+    df = test_df.copy()
+    for user_id in df['user'].unique():
+        users = df[df["user"] == user_id]
+        for time_id in users["timestamp"].unique():
+            user_encoded = le_user.transform([user_id])[0]
+            time_encoded = le_time.transform([time_id])[0]
+            user_predictions = factorized_tensor[user_encoded, :, time_encoded]
+            top_items = np.argsort(user_predictions)[-k:][::-1]
+            df.loc[(df['user'] == user_id) & (df['timestamp'] == time_id), f'item'] = le_item.inverse_transform(np.array([top_items])).item()
+            df.loc[(df['user'] == user_id) & (df['timestamp'] == time_id), f'rate'] = user_predictions[top_items].item()
+    df['bought'] = df['rate'] * df['max']
+    df = df.reset_index(drop=True).sort_values('time')
+    return df
+
 def eval_flatten_calc(y_true: np.array, y_pred: np.array) -> dict:
     """This function will get Original test data tensor and Refactore test data tensor, convert them to 1-d array (`flatten`)
     and return evaluation metrics values.    

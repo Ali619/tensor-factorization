@@ -4,17 +4,18 @@ import tensorly as tl
 from tensorly.decomposition import parafac, non_negative_parafac
 from sklearn.preprocessing import LabelEncoder
 from timeit import default_timer as timer
-from metrics import calculate_map, calculate_recall, calculate_f1_score, eval_flatten_calc, get_recommendations
+from metrics import calculate_map, calculate_recall, calculate_f1_score, eval_flatten_calc, get_recommendations, convert_result_to_org_format
 from logger import TrainTestLog, logger
 from preprocess import preprocess_data
 
 RANDOM_STATE = 42
 DATA_PATH = './data/tensor.csv'
 INIT_KERNEL = ['random', 'svd']
-N_ITER = [100]
-N_COMPONENTS = [10, 20, 30, 50, 100, 200, 300]
+N_ITER = [5]
+N_COMPONENTS = [10]
 K = 1
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cpu'
 
 print(f'Device is: {DEVICE}')
 
@@ -82,6 +83,9 @@ for init_kernel in INIT_KERNEL:
             sparsity = 1.0 - (np.count_nonzero(factorized_tensor) / float(factorized_tensor.size))
             logger.info(f'sparsity % after factorization: {sparsity}')
             
+            results_in_org_format = convert_result_to_org_format(test_df=test_df, le_user=le_user, le_item=le_item, le_time=le_time, k=K, factorized_tensor=factorized_tensor)
+            results_in_org_format.to_csv(f'./parafac-log/org_format_result-kenel-{init_kernel}-n_components-{n_components}-n_iter-{n_iter}.csv', index=False)
+
             metrics = eval_flatten_calc(y_true=org_tensor[:, :, split:], y_pred=factorized_tensor[:, :, split:])
             logger.info(f"eval metrics based on flatten tensors: \n --->{[(key, value) for key, value in metrics.items()]}")
             
