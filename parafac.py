@@ -1,26 +1,28 @@
 import numpy as np
 import torch
 import tensorly as tl
-from tensorly.decomposition import parafac, non_negative_parafac
+from tensorly.decomposition import non_negative_parafac
 from sklearn.preprocessing import LabelEncoder
 from timeit import default_timer as timer
-from metrics import calculate_map, calculate_recall, calculate_f1_score, eval_flatten_calc, get_recommendations, convert_result_to_org_format
+from metrics import calculate_map, calculate_recall, calculate_f1_score, eval_flatten_calc, get_recommendations, convert_result_to_org_format, user_item_history
 from logger import TrainTestLog, logger
 from preprocess import preprocess_data
 
 RANDOM_STATE = 42
 DATA_PATH = './data/tensor.csv'
-INIT_KERNEL = ['random', 'svd']
-N_ITER = [5]
-N_COMPONENTS = [10]
+INIT_KERNEL = ['random']
+N_ITER = [1000]
+N_COMPONENTS = [300]
 K = 1
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-DEVICE = 'cpu'
+TOLERANCE = 1e-10 # Default: 1e-6
 
-print(f'Device is: {DEVICE}')
-
-logger = logger()
 train_test_log = TrainTestLog(k=K)
+logger = logger()
+
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+logger.info(f"Device is: {DEVICE}")
+logger.info(f"K is: {K}")
 
 # Set the TensorLy backend to NumPy for better performance
 tl.set_backend('numpy' if DEVICE == 'cpu' else 'pytorch')
@@ -65,10 +67,10 @@ test_user_recs = {}
 for init_kernel in INIT_KERNEL:
     for n_components in N_COMPONENTS:
         for n_iter in N_ITER:
-            logger.info(f"Training for init: {init_kernel} | n_components: {n_components} | n_iter: {n_iter}")
+            logger.info(f"Training for init: {init_kernel} | n_components: {n_components} | n_iter: {n_iter} | tolerance: {TOLERANCE}")
             start = timer()
-            try:    
-                cp_tensor = non_negative_parafac(tensor, rank=n_components, n_iter_max=n_iter, init=init_kernel,
+            try:
+                cp_tensor = non_negative_parafac(tensor, rank=n_components, n_iter_max=n_iter, init=init_kernel, tol=TOLERANCE, 
                                      random_state=RANDOM_STATE, verbose=1)
             except Exception as e:
                 logger.error(f"ERROR: {e}")
@@ -87,7 +89,7 @@ for init_kernel in INIT_KERNEL:
             results_in_org_format.to_csv(f'./parafac-log/org_format_result-kenel-{init_kernel}-n_components-{n_components}-n_iter-{n_iter}.csv', index=False)
 
             metrics = eval_flatten_calc(y_true=org_tensor[:, :, split:], y_pred=factorized_tensor[:, :, split:])
-            logger.info(f"eval metrics based on flatten tensors: \n --->{[(key, value) for key, value in metrics.items()]}")
+            logger.info(f"eval metrics based on flatten tensors: {[(key, value) for key, value in metrics.items()]}")
             
             logger.info(f"Getting top-k recommendations for train and test data to start evaluation")
             for user in train_df['user'].unique():
@@ -108,6 +110,8 @@ for init_kernel in INIT_KERNEL:
                     test_user_recs[user] = get_recommendations(user_id=user, time_id=time_id, k=K,
                                                                le_user=le_user, le_time=le_time, factorized_tensor=factorized_tensor)
             
+            logger.info(f'Item accuracy: %{user_item_history(test_df=test_df, user_recs=test_user_recs)}') 
+            
             test_data_map_score = calculate_map(test_df, test_user_recs, le_item, k=K)
             test_data_recall_score = calculate_recall(test_df, test_user_recs, le_item, k=K)
             test_data_f1_score = calculate_f1_score(test_df, test_user_recs, le_item, k=K)
@@ -116,7 +120,7 @@ for init_kernel in INIT_KERNEL:
                                             'map_score': map_score, 'recall_score': recall_score, 'f1_score': f1_score, 
                                             'test_data_map_score': test_data_map_score, 'test_data_recall_score': test_data_recall_score, 'test_data_f1_score': test_data_f1_score, 
                                             'time': round(stop-start, 2)})
-            logger.info(train_test_log.get_score_log())
+            logger.info(f'{train_test_log.get_score_log()}\n')
 
             # Get prediction. Will be used to create a csv file after training will be done
             for user in test_df['user'].unique():
@@ -130,4 +134,3 @@ for init_kernel in INIT_KERNEL:
                     train_test_log.update_output_recs({f"item_{i+1}": item})
 
 train_test_log.create_csv()
-
