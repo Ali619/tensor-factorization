@@ -22,11 +22,25 @@ def convert_result_to_org_format(test_df: pd.DataFrame, le_user: LabelEncoder, l
             time_encoded = le_time.transform([time_id])[0]
             user_predictions = factorized_tensor[user_encoded, :, time_encoded]
             top_items = np.argsort(user_predictions)[-k:][::-1]
-            df.loc[(df['user'] == user_id) & (df['timestamp'] == time_id), f'item'] = le_item.inverse_transform(np.array([top_items])).item()
-            df.loc[(df['user'] == user_id) & (df['timestamp'] == time_id), f'rate'] = user_predictions[top_items].item()
+            df.loc[(df['user'] == user_id) & (df['timestamp'] == time_id), 'item'] = le_item.inverse_transform(top_items).item()
+            df.loc[(df['user'] == user_id) & (df['timestamp'] == time_id), 'rate'] = user_predictions[top_items].item()
     df['bought'] = df['rate'] * df['max']
     df = df.reset_index(drop=True).sort_values('time')
     return df
+
+def user_item_history(test_df: pd.DataFrame, user_recs: dict):
+    avg_acc = 0
+    for user in test_df['user'].unique():
+        acc = []
+        actual_items = set(test_df[test_df["user"] == user]['item'].to_list())
+        recommended_items = set(user_recs[user])
+        for item in recommended_items:
+            if item not in actual_items:
+                acc.append(0)
+            else:
+                acc.append(1)
+    avg_acc += sum(acc) / len(acc)
+    return avg_acc / len(test_df['user'].unique())
 
 def eval_flatten_calc(y_true: np.array, y_pred: np.array) -> dict:
     """This function will get Original test data tensor and Refactore test data tensor, convert them to 1-d array (`flatten`)
