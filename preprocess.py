@@ -15,7 +15,7 @@ def preprocess_data(path: str, train_size: float=0.8, split: bool=True) -> tuple
     df = df[df['rate'] >= 0]
     df['orginal_rate'] = df['rate'].copy()
     df['original_item'] = df['item'].copy()
-    df['max'] = df.groupby('item')['rate'].transform(lambda x: x.max())
+    df['max'] = df.groupby('item')['rate'].transform(lambda x: x.max()) # Store the max rate for each item
     df['rate'] = df.groupby('item')['rate'].transform(lambda x: x / x.max())
 
     df = df.sort_values(by="time")
