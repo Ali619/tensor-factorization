@@ -1,22 +1,27 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from pandas import to_datetime
 
-def preprocess_data(path: str, train_size: float=0.8, split: bool=True) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
+
+def preprocess_data(
+    path: str, train_size: float = 0.8, split: bool = True
+) -> tuple[pd.DataFrame, pd.DataFrame] | pd.DataFrame:
     """Retrun split dataframes for train and test data
-    
+
     Parameters:
         `split`: If `False`, it will return the whole dataframe without spliting it to train and test, default is `True`.
     """
     df = pd.read_csv(path)
     df["time"] = to_datetime(df["time"])
-    df['timestamp'] = df['time'].astype(int) // 10**9
+    df["timestamp"] = df["time"].astype(int) // 10**9
 
-    df = df[df['rate'] >= 0]
-    df['orginal_rate'] = df['rate'].copy()
-    df['original_item'] = df['item'].copy()
-    df['max'] = df.groupby('item')['rate'].transform(lambda x: x.max()) # Store the max rate for each item
-    df['rate'] = df.groupby('item')['rate'].transform(lambda x: x / x.max())
+    df = df[df["rate"] >= 0]
+    df["orginal_rate"] = df["rate"].copy()
+    df["original_item"] = df["item"].copy()
+    df["max"] = df.groupby("item")["rate"].transform(
+        lambda x: x.max()
+    )  # Store the max rate for each item
+    df["rate"] = df.groupby("item")["rate"].transform(lambda x: x / x.max())
 
     df = df.sort_values(by="time")
 
@@ -26,7 +31,8 @@ def preprocess_data(path: str, train_size: float=0.8, split: bool=True) -> tuple
     train_df, test_df = df[:split], df[split:]
     return train_df, test_df
 
-def preprocess_for_classification_report(test_df:pd.DataFrame) -> pd.DataFrame:
+
+def preprocess_for_classification_report(test_df: pd.DataFrame) -> pd.DataFrame:
     if "is_buying" not in test_df.columns:
         test_df["is_buying"] = False
     test_df["is_buying"] = test_df["rate"] > 0
